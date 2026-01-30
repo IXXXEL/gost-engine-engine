@@ -28,8 +28,8 @@ jobs:
     - name: Build with Coverity build tool
       run: |
         export PATH=`pwd`/coverity_tool/bin:$PATH
-        .github/before_script.sh
-        cov-build --dir cov-int .github/script.sh
+        .github/before-script.sh
+        cov-build --dir cov-int .github/build-engine.sh
     - name: Submit build result to Coverity Scan
       run: |
         tar czvf cov.tar.gz cov-int
