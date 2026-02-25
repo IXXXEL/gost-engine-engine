@@ -13,6 +13,7 @@
 #include <openssl/core_names.h>
 #include "gost_prov.h"
 #include "gost_lcl.h"
+#include "gost_prov_gost89.h"
 
 /*
  * This definitions are added in the patch to OpenSSL 3.4.2 version to support
@@ -42,6 +43,7 @@ the provider for encryption/decryption operations. ."
 # endif
 # define OSSL_CIPHER_PARAM_TLSTREE_MODE "tlstree_mode"
 #endif
+
 
 /*
  * Forward declarations of all generic OSSL_DISPATCH functions, to make sure
@@ -79,6 +81,14 @@ struct gost_prov_crypt_ctx_st {
     EVP_CIPHER_CTX *cctx;
 };
 typedef struct gost_prov_crypt_ctx_st GOST_CTX;
+
+struct gost89_cfb_ctx {
+    PROV_CTX *provctx;
+    struct ossl_gost_cipher_ctx cctx;
+};
+
+typedef struct gost89_cfb_ctx GOST89_CFB_CTX;
+
 
 static void cipher_freectx(void *vgctx)
 {
@@ -314,7 +324,110 @@ static int cipher_final(void *vgctx,
     return res > 0;
 }
 
-static const OSSL_PARAM *known_Gost28147_89_cipher_params;
+/*-------------GOST-89-cfb----------------*/
+static void gost89_cfb_freectx(void *vctx)
+{
+    GOST89_CFB_CTX *ctx = vctx;
+    if (ctx) {
+        gost_89_cfb_cleanup(&ctx->cctx);
+        OPENSSL_free(ctx);
+    }
+}
+
+static void *gost89_cfb_newctx(void *provctx)
+{
+    GOST89_CFB_CTX *ctx = OPENSSL_zalloc(sizeof(*ctx));
+    if (!ctx) return NULL;
+    ctx->provctx = provctx;
+    return ctx;
+}
+
+static void *gost89_cfb_dupctx(void *vsrc)
+{
+    GOST89_CFB_CTX *src = vsrc;
+    GOST89_CFB_CTX *dst = gost89_cfb_newctx(src->provctx);
+    if (!dst) return NULL;
+
+    memcpy(&dst->cctx, &src->cctx, sizeof(struct ossl_gost_cipher_ctx));
+    return dst;
+}
+
+static int gost89_cfb_encrypt_init(void *vctx,
+                                   const unsigned char *key, size_t keylen,
+                                   const unsigned char *iv, size_t ivlen,
+                                   const OSSL_PARAM params[])
+{
+    GOST89_CFB_CTX *ctx = vctx;
+
+    if (keylen != 32 || ivlen != 8) return 0;
+
+    return gost_89_cfb_init(&ctx->cctx, key, iv, 1);
+}
+
+static int gost89_cfb_decrypt_init(void *vctx,
+                                   const unsigned char *key, size_t keylen,
+                                   const unsigned char *iv, size_t ivlen,
+                                   const OSSL_PARAM params[])
+{
+    GOST89_CFB_CTX *ctx = vctx;
+
+    if (keylen != 32 || ivlen != 8) return 0;
+
+    return gost_89_cfb_init(&ctx->cctx, key, iv, 0);
+}
+
+static int gost89_cfb_update(void *vctx,
+                             unsigned char *out, size_t *outl, size_t outsize,
+                             const unsigned char *in, size_t inl)
+{
+    GOST89_CFB_CTX *ctx = vctx;
+
+    if (!gost_89_cfb_do(&ctx->cctx, out, in, inl)) {
+        return 0;
+    }
+
+    if (outl) *outl = inl;
+    return 1;
+}
+
+static int gost89_cfb_final(void *vctx,
+                            unsigned char *out, size_t *outl, size_t outsize)
+{
+    if (outl) *outl = 0;
+    return 1;
+}
+
+static int gost89_cfb_get_params(OSSL_PARAM params[])
+{
+    OSSL_PARAM *p;
+
+    if ((p = OSSL_PARAM_locate(params, "blocksize")) != NULL &&
+        !OSSL_PARAM_set_size_t(p, 8))
+        return 0;
+    if ((p = OSSL_PARAM_locate(params, "ivlen")) != NULL &&
+        !OSSL_PARAM_set_size_t(p, 8))
+        return 0;
+    if ((p = OSSL_PARAM_locate(params, "keylen")) != NULL &&
+        !OSSL_PARAM_set_size_t(p, 32))
+        return 0;
+
+    return 1;
+}
+
+static const OSSL_DISPATCH gost89_cfb_functions[] = {
+    { OSSL_FUNC_CIPHER_GET_PARAMS, (void (*)(void))gost89_cfb_get_params },
+    { OSSL_FUNC_CIPHER_NEWCTX,     (void (*)(void))gost89_cfb_newctx },
+    { OSSL_FUNC_CIPHER_DUPCTX,     (void (*)(void))gost89_cfb_dupctx },
+    { OSSL_FUNC_CIPHER_FREECTX,    (void (*)(void))gost89_cfb_freectx },
+    { OSSL_FUNC_CIPHER_ENCRYPT_INIT, (void (*)(void))gost89_cfb_encrypt_init },
+    { OSSL_FUNC_CIPHER_DECRYPT_INIT, (void (*)(void))gost89_cfb_decrypt_init },
+    { OSSL_FUNC_CIPHER_UPDATE,     (void (*)(void))gost89_cfb_update },
+    { OSSL_FUNC_CIPHER_FINAL,      (void (*)(void))gost89_cfb_final },
+    { 0, NULL }
+};
+/*------------------------*/
+
+
 static const OSSL_PARAM *known_Gost28147_89_cbc_cipher_params;
 static const OSSL_PARAM *known_Gost28147_89_cnt_cipher_params;
 static const OSSL_PARAM *known_Gost28147_89_cnt_12_cipher_params;
@@ -362,7 +475,6 @@ typedef void (*fptr_t)(void);
         { 0, NULL },                                                    \
     }
 
-MAKE_FUNCTIONS(Gost28147_89_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cnt_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cnt_12_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cbc_cipher);
@@ -382,8 +494,7 @@ MAKE_FUNCTIONS(grasshopper_mgm_cipher);
 
 /* The OSSL_ALGORITHM for the provider's operation query function */
 const OSSL_ALGORITHM GOST_prov_ciphers[] = {
-    { SN_id_Gost28147_89 ":gost89:GOST 28147-89:1.2.643.2.2.21", NULL,
-      Gost28147_89_cipher_functions },
+    { SN_id_Gost28147_89, NULL, gost89_cfb_functions },
     { SN_gost89_cnt, NULL, Gost28147_89_cnt_cipher_functions },
     { SN_gost89_cnt_12, NULL, Gost28147_89_cnt_12_cipher_functions },
     { SN_gost89_cbc, NULL, Gost28147_89_cbc_cipher_functions },
@@ -415,7 +526,6 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 
 void GOST_prov_deinit_ciphers(void) {
     static GOST_cipher *list[] = {
-        &Gost28147_89_cipher,
         &Gost28147_89_cnt_cipher,
         &Gost28147_89_cnt_12_cipher,
         &Gost28147_89_cbc_cipher,
