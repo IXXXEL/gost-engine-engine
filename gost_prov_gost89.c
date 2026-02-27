@@ -1,122 +1,151 @@
-#include <string.h>
-#include <openssl/objects.h>
-#include "gost_lcl.h"
+#include "gost_prov_lcl.h"
 
-extern gost_subst_block Gost28147_TestParamSet;
-extern gost_subst_block Gost28147_CryptoProParamSetA;
+static int prov_gost89_set_asn1_params(void *cipher_data, ASN1_TYPE *params)
+{
+    GOST_Prov_Cipher_CTX *c = cipher_data;
+    if (!c || !params) return 0;
 
-static const gost_subst_block* get_sblock_by_nid(int nid) {
-    switch (nid) {
-        case NID_id_Gost28147_89:
-            return &Gost28147_CryptoProParamSetA;
-        default:
-            return NULL;
+    GOST_CIPHER_PARAMS *gcp = NULL;
+    ASN1_OCTET_STRING *os_seq = NULL, *os_iv = NULL;
+    unsigned char *der = NULL;
+    int derlen = -1;
+    int ret = 0;
+
+    gcp = GOST_CIPHER_PARAMS_new();
+    if (!gcp) {
+        GOSTerr(GOST_F_GOST89_SET_ASN1_PARAMETERS, ERR_R_MALLOC_FAILURE);
+        return 0;
     }
+
+    os_iv = ASN1_OCTET_STRING_new();
+    if (!os_iv || !ASN1_OCTET_STRING_set(os_iv, c->iv, sizeof(c->iv))) {
+        GOSTerr(GOST_F_GOST89_SET_ASN1_PARAMETERS, ERR_R_MALLOC_FAILURE);
+        goto err;
+    }
+    gcp->iv = os_iv;
+
+    ASN1_OBJECT *obj = OBJ_nid2obj(c->paramNID);
+    if (!obj) {
+        GOSTerr(GOST_F_GOST89_SET_ASN1_PARAMETERS, ERR_R_INTERNAL_ERROR);
+        goto err;
+    }
+    gcp->enc_param_set = obj;
+
+    derlen = i2d_GOST_CIPHER_PARAMS(gcp, NULL);
+    if (derlen <= 0) {
+        GOSTerr(GOST_F_GOST89_SET_ASN1_PARAMETERS, ERR_R_INTERNAL_ERROR);
+        goto err;
+    }
+
+    der = OPENSSL_malloc(derlen);
+    if (!der) {
+        GOSTerr(GOST_F_GOST89_SET_ASN1_PARAMETERS, ERR_R_MALLOC_FAILURE);
+        goto err;
+    }
+    unsigned char *p = der;
+    i2d_GOST_CIPHER_PARAMS(gcp, &p);
+
+    os_seq = ASN1_OCTET_STRING_new();
+    if (!os_seq || !ASN1_OCTET_STRING_set(os_seq, der, derlen)) {
+        GOSTerr(GOST_F_GOST89_SET_ASN1_PARAMETERS, ERR_R_MALLOC_FAILURE);
+        goto err;
+    }
+
+    ASN1_TYPE_set(params, V_ASN1_SEQUENCE, os_seq);
+
+    ret = 1;
+
+ err:
+    OPENSSL_free(der);
+    GOST_CIPHER_PARAMS_free(gcp);
+    return ret;
 }
 
-int gost_89_cfb_init(struct ossl_gost_cipher_ctx *c, const unsigned char *key, const unsigned char *iv, int enc)
+
+int gost89_get_asn1_parameters(void *cipher_data, ASN1_TYPE *params)
 {
-    if (!c) return 0;
+    return -1;
+}
 
-    const gost_subst_block *sblock = get_sblock_by_nid(NID_id_Gost28147_89);
-    if (!sblock) return 0;
+int gost89_cipher_init_cfb(void *cipher_data,
+                     const unsigned char *key,
+                     const unsigned char *iv,
+                     int enc)
+{
+    GOST_Prov_Cipher_CTX *ctx = cipher_data;
+    if (!ctx || !key) return 0;
 
-    gost_init(&c->cctx, sblock);
+    gost_init(&ctx->cctx, &Gost28147_CryptoProParamSetA);
+    gost_key(&ctx->cctx, key);
 
-    if (key) {
-        gost_key(&c->cctx, key);
-    }
+    memset(ctx->iv, 0, sizeof(ctx->iv));
+    if (iv)
+        memcpy(ctx->iv, iv, 8);
 
-    if (iv) {
-        memcpy(c->iv, iv, 8);
-    } else {
-        memset(c->iv, 0, 8);
-    }
-
-    c->count = 0;
-    c->encrypting = enc;
-
+    ctx->count = 0;
+    ctx->encrypting = enc;
     return 1;
 }
 
-int gost_89_cfb_do(struct ossl_gost_cipher_ctx *c, unsigned char *out, const unsigned char *in, size_t inl)
+int gost89_cipher_do_cfb(void *cipher_data,
+                   unsigned char *out,
+                   const unsigned char *in,
+                   size_t inl)
 {
-    if (!c || !in || !out) return 0;
+    GOST_Prov_Cipher_CTX *ctx = cipher_data;
+    if (!ctx || !in || !out) return 0;
 
-    const int encrypting = c->encrypting;
-    size_t i, j;
+    const unsigned char *in_ptr = in;
+    unsigned char *out_ptr = out;
+    size_t i = 0, j;
 
-    if (c->count > 0) {
-        if (c->count == 8) {
-            gostcrypt(&c->cctx, c->iv, c->buf);
-        }
+    unsigned char *buf = gost_prov_get_buf(ctx);
+    unsigned char *iv   = gost_prov_get_iv(ctx);
+    size_t count        = gost_prov_get_count(ctx);
+    int encrypting      = gost_prov_is_encrypting(ctx);
 
-        for (j = c->count, i = 0; j < 8 && i < inl; ++j, ++i) {
-            unsigned char pt = *in++;
-            unsigned char ct = c->buf[j] ^ pt;
-            *out++ = ct;
+    if (count > 0) {
+        for (j = count, i = 0; j < 8 && i < inl; ++j, ++i, ++in_ptr, ++out_ptr) {
+            unsigned char pt = *in_ptr;
+            *out_ptr = buf[j] ^ pt;
 
-            if (encrypting) {
-                memcpy(c->buf + 8 + j, &pt, 1);
-            } else {
-                memcpy(c->buf + 8 + j, &ct, 1);
-            }
+            if (encrypting)
+                buf[j + 8] = pt;
+            else
+                buf[j + 8] = *out_ptr;
         }
 
         if (j == 8) {
-            memcpy(c->iv, c->buf + 8, 8);
-            c->count = 0;
+            memcpy(iv, iv + 8, 8);
+            gost_prov_set_count(ctx, 0);
         } else {
-            c->count = j;
+            gost_prov_set_count(ctx, j);
             return 1;
         }
     }
 
-    while (inl >= 8) {
-        gostcrypt(&c->cctx, c->iv, c->buf);
+    for (; (inl - i) >= 8; i += 8, in_ptr += 8, out_ptr += 8) {
+        gostcrypt(&ctx->cctx, iv, buf);
 
-        if (encrypting) {
-            for (j = 0; j < 8; ++j) {
-                out[j] = c->buf[j] ^ in[j];
-            }
-            memcpy(c->iv, out, 8);
-        } else {
-            for (j = 0; j < 8; ++j) {
-                out[j] = c->buf[j] ^ in[j];
-            }
-            memcpy(c->iv, in, 8);
-        }
+        for (j = 0; j < 8; ++j)
+            out_ptr[j] = buf[j] ^ in_ptr[j];
 
-        in += 8;
-        out += 8;
-        inl -= 8;
+        if (encrypting)
+            memcpy(iv, out_ptr, 8);
+        else
+            memcpy(iv, in_ptr, 8);
     }
 
-    if (inl > 0) {
-        gostcrypt(&c->cctx, c->iv, c->buf);
+    if (i < inl) {
+        gostcrypt(&ctx->cctx, iv, buf);
 
-        for (j = 0; j < inl; ++j) {
-            unsigned char pt = in[j];
-            unsigned char ct = c->buf[j] ^ pt;
-            out[j] = ct;
+        for (j = 0; i < inl; ++j, ++i)
+            out_ptr[j] = buf[j] ^ in_ptr[j];
 
-            if (encrypting) {
-                memcpy(c->buf + 8 + j, &pt, 1);
-            } else {
-                memcpy(c->buf + 8 + j, &ct, 1);
-            }
-        }
-
-        c->count = inl;
+        gost_prov_set_count(ctx, j);
     } else {
-        c->count = 0;
+        gost_prov_set_count(ctx, 0);
     }
 
     return 1;
-}
-
-void gost_89_cfb_cleanup(struct ossl_gost_cipher_ctx *c)
-{
-    if (!c) return;
-    OPENSSL_cleanse(c, sizeof(struct ossl_gost_cipher_ctx));
 }
