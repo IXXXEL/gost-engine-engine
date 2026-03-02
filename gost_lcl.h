@@ -230,10 +230,6 @@ struct ossl_gost_cipher_ctx {
     unsigned char tag[8];
     gost_ctx cctx;
     EVP_MD_CTX *omac_ctx;
-
-    unsigned char iv[8];
-    unsigned char buf[16];
-    int encrypting;
 };
 /* Structure to map parameter NID to S-block */
 struct gost_cipher_info {
@@ -345,7 +341,7 @@ struct gost_cipher_st {
     int block_size;     /* (bytes) */
     int key_len;        /* (bytes) */
     int iv_len;
-    unsigned char iv[8];
+    
     int flags;
     int (*init) (EVP_CIPHER_CTX *ctx, const unsigned char *key,
                  const unsigned char *iv, int enc);
@@ -365,7 +361,7 @@ void GOST_deinit_cipher(GOST_cipher *c);
 const EVP_CIPHER *cipher_gost_magma_ctracpkm();
 
 /* ENGINE implementation data */
-extern GOST_cipher Gost28147_89_cipher;
+extern GOST_cipher Gost28147_89_cipher_legacy;
 extern GOST_cipher Gost28147_89_cbc_cipher;
 extern GOST_cipher Gost28147_89_cnt_cipher;
 extern GOST_cipher Gost28147_89_cnt_12_cipher;

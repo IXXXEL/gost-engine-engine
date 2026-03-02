@@ -157,7 +157,7 @@ extern GOST_Prov_Cipher Gost28147_89_cipher;
 MAKE_FUNCTIONS(Gost28147_89_cipher);
 
 const OSSL_ALGORITHM GOST_prov_ciphers[] = {
-    { "gost89", NULL, Gost28147_89_cipher_functions },
+    { SN_id_Gost28147_89, NULL, Gost28147_89_cipher_functions },
     { NULL, NULL, NULL }
 };
 
