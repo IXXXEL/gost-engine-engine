@@ -69,8 +69,7 @@ static int test_contexts_cipher(const char *name, const int enc, int acpkm)
     T((type = (EVP_CIPHER *)EVP_get_cipherbyname(name))
       || (type = EVP_CIPHER_fetch(NULL, name, NULL)));
     ERR_pop_to_mark();
-    int test_len = EVP_CIPHER_key_length(type);
-    printf("%d",test_len);
+
     printf(cBLUE "%s test for %s" cNORM "\n",
            enc ? "Encryption" : "Decryption", name);
 
@@ -308,17 +307,17 @@ static struct testcase_cipher {
     int acpkm;
 } testcases_ciphers[] = {
     { SN_id_Gost28147_89, },
-    // { SN_gost89_cnt, },
-    // { SN_gost89_cnt_12, },
-    // { SN_gost89_cbc, },
-    // { SN_grasshopper_ecb, },
-    // { SN_grasshopper_cbc, },
-    // { SN_grasshopper_cfb, },
-    // { SN_grasshopper_ofb, },
-    // { SN_grasshopper_ctr, },
-    // { SN_magma_cbc, },
-    // { SN_magma_ctr, },
-    // { SN_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm, 256 / 8 },
+    { SN_gost89_cnt, },
+    { SN_gost89_cnt_12, },
+    { SN_gost89_cbc, },
+    { SN_grasshopper_ecb, },
+    { SN_grasshopper_cbc, },
+    { SN_grasshopper_cfb, },
+    { SN_grasshopper_ofb, },
+    { SN_grasshopper_ctr, },
+    { SN_magma_cbc, },
+    { SN_magma_ctr, },
+    { SN_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm, 256 / 8 },
     { 0 },
 };
 
@@ -326,15 +325,15 @@ static struct testcase_digest {
     const char *name;
     int mac;
 } testcases_digests[] = {
-    // { SN_id_GostR3411_94, },
-    // { SN_id_Gost28147_89_MAC, 1 },
-    // { SN_id_GostR3411_2012_256, },
-    // { SN_id_GostR3411_2012_512, },
-    // { SN_gost_mac_12, 1 },
-    // { SN_magma_mac, 1 },
-    // { SN_grasshopper_mac, 1 },
-    // { SN_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm_omac, 1 },
-    // { SN_id_tc26_cipher_gostr3412_2015_magma_ctracpkm_omac, 1 },
+    { SN_id_GostR3411_94, },
+    { SN_id_Gost28147_89_MAC, 1 },
+    { SN_id_GostR3411_2012_256, },
+    { SN_id_GostR3411_2012_512, },
+    { SN_gost_mac_12, 1 },
+    { SN_magma_mac, 1 },
+    { SN_grasshopper_mac, 1 },
+    { SN_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm_omac, 1 },
+    { SN_id_tc26_cipher_gostr3412_2015_magma_ctracpkm_omac, 1 },
     { 0 },
 };
 int main(int argc, char **argv)

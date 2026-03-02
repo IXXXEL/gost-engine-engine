@@ -219,6 +219,7 @@ set(GOST_PROV_SOURCE_FILES
         gost_prov_keyexch.c
         gost_prov_tls.c
         gost_prov_tls.h
+        gost_prov_cipher_gost89.c
         gost_prov_gost89.c
         gost_prov_gost89.h
         gost_prov_gost89_common.c
