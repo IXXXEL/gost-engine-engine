@@ -230,6 +230,8 @@ struct ossl_gost_cipher_ctx {
     unsigned char tag[8];
     gost_ctx cctx;
     EVP_MD_CTX *omac_ctx;
+    int encrypting;
+    unsigned char iv[16];
 };
 /* Structure to map parameter NID to S-block */
 struct gost_cipher_info {
@@ -351,6 +353,16 @@ struct gost_cipher_st {
     int (*set_asn1_parameters)(EVP_CIPHER_CTX *, ASN1_TYPE *);
     int (*get_asn1_parameters)(EVP_CIPHER_CTX *, ASN1_TYPE *);
     int (*ctrl)(EVP_CIPHER_CTX *, int type, int arg, void *ptr);
+
+        /* Direct methods for provider use (no EVP_CIPHER_CTX) */
+    int (*init_direct) (void *cipher_data, const unsigned char *key,
+                        const unsigned char *iv, int enc);
+    int (*do_cipher_direct)(void *cipher_data, unsigned char *out,
+                            const unsigned char *in, size_t inl);
+    int (*cleanup_direct)(void *cipher_data);
+    int (*set_asn1_parameters_direct)(void *cipher_data, ASN1_TYPE *);
+    int (*get_asn1_parameters_direct)(void *cipher_data, ASN1_TYPE *);
+    int (*ctrl_direct)(void *cipher_data, int type, int arg, void *ptr);
 };
 typedef struct gost_cipher_st GOST_cipher;
 
