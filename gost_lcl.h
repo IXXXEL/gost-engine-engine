@@ -341,7 +341,6 @@ struct gost_cipher_st {
     int block_size;     /* (bytes) */
     int key_len;        /* (bytes) */
     int iv_len;
-    
     int flags;
     int (*init) (EVP_CIPHER_CTX *ctx, const unsigned char *key,
                  const unsigned char *iv, int enc);
