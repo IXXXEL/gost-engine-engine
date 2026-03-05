@@ -210,6 +210,7 @@ set(GOST_PROV_SOURCE_FILES
         gost_prov.c
         gost_prov.h
         gost_prov_cipher.c
+        gost_prov_cipher_gost89.c
         gost_prov_digest.c
         gost_prov_mac.c
         gost_prov_keymgmt.c
@@ -219,12 +220,10 @@ set(GOST_PROV_SOURCE_FILES
         gost_prov_keyexch.c
         gost_prov_tls.c
         gost_prov_tls.h
-        gost_prov_cipher_gost89.c
-        gost_prov_gost89.c
-        gost_prov_gost89.h
-        gost_prov_gost89_common.c
-        gost_prov_gost89_common.h
-        gost_prov_lcl.h
+        gost_cipher.c
+        gost_cipher.h
+        gost_cipher_gost28147_89.c
+        gost_cipher_gost28147_89.h
         )
 
 set(TEST_ENVIRONMENT_COMMON

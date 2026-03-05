@@ -315,7 +315,7 @@ static int cipher_final(void *vgctx,
 }
 
 #define NEW_GOST89_IMPL
-
+extern const OSSL_DISPATCH Gost28147_89_cipher_functions[];
 #ifndef NEW_GOST89_IMPL
 static const OSSL_PARAM *known_Gost28147_89_cipher_legacy_params;
 #endif
@@ -365,11 +365,15 @@ typedef void (*fptr_t)(void);
         { OSSL_FUNC_CIPHER_FINAL, (fptr_t)cipher_final },               \
         { 0, NULL },                                                    \
     }
+
 #ifdef NEW_GOST89_IMPL
 extern const OSSL_DISPATCH Gost28147_89_cipher_functions[];
-#else
+#endif
+
+#ifndef NEW_GOST89_IMPL
 MAKE_FUNCTIONS(Gost28147_89_cipher_legacy);
 #endif
+
 MAKE_FUNCTIONS(Gost28147_89_cnt_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cnt_12_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cbc_cipher);
@@ -388,6 +392,10 @@ MAKE_FUNCTIONS(grasshopper_ctr_acpkm_omac_cipher);
 MAKE_FUNCTIONS(grasshopper_mgm_cipher);
 
 /* The OSSL_ALGORITHM for the provider's operation query function */
+#ifdef NEW_GOST89_IMPL
+extern const OSSL_DISPATCH Gost28147_89_cipher[];
+#endif
+
 const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 #ifdef NEW_GOST89_IMPL
     { SN_id_Gost28147_89 ":gost89:GOST 28147-89:1.2.643.2.2.21", NULL,
