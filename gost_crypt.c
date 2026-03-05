@@ -153,7 +153,7 @@ static GOST_cipher gost_template_cipher = {
     .ctrl = gost_cipher_ctl,
 };
 
-GOST_cipher Gost28147_89_cipher = {
+GOST_cipher Gost28147_89_cipher_legacy = {
     .nid = NID_id_Gost28147_89,
     .template = &gost_template_cipher,
     .block_size = 1,
@@ -335,7 +335,7 @@ GOST_digest Gost28147_89_mac_12_digest = {
  * upon engine initialization
  */
 
-static struct gost_cipher_info gost_cipher_list[] = {
+static struct gost_cipher_info gost_cipher_list_legacy[] = {
     /*- NID *//*
      * Subst block
      *//*
@@ -371,10 +371,10 @@ const struct gost_cipher_info *get_encryption_params(ASN1_OBJECT *obj)
         const char *params = get_gost_engine_param(GOST_PARAM_CRYPT_PARAMS);
         if (!params || !strlen(params)) {
             int i;
-            for (i = 0; gost_cipher_list[i].nid != NID_undef; i++)
-                if (gost_cipher_list[i].nid == NID_id_tc26_gost_28147_param_Z)
-                    return &gost_cipher_list[i];
-            return &gost_cipher_list[0];
+            for (i = 0; gost_cipher_list_legacy[i].nid != NID_undef; i++)
+                if (gost_cipher_list_legacy[i].nid == NID_id_tc26_gost_28147_param_Z)
+                    return &gost_cipher_list_legacy[i];
+            return &gost_cipher_list_legacy[0];
         }
 
         nid = OBJ_txt2nid(params);
@@ -388,7 +388,7 @@ const struct gost_cipher_info *get_encryption_params(ASN1_OBJECT *obj)
     } else {
         nid = OBJ_obj2nid(obj);
     }
-    for (param = gost_cipher_list; param->sblock != NULL && param->nid != nid;
+    for (param = gost_cipher_list_legacy; param->sblock != NULL && param->nid != nid;
          param++) ;
     if (!param->sblock) {
         GOSTerr(GOST_F_GET_ENCRYPTION_PARAMS, GOST_R_INVALID_CIPHER_PARAMS);

@@ -314,7 +314,11 @@ static int cipher_final(void *vgctx,
     return res > 0;
 }
 
-static const OSSL_PARAM *known_Gost28147_89_cipher_params;
+#define NEW_GOST89_IMPL
+extern const OSSL_DISPATCH Gost28147_89_cipher_functions[];
+#ifndef NEW_GOST89_IMPL
+static const OSSL_PARAM *known_Gost28147_89_cipher_legacy_params;
+#endif
 static const OSSL_PARAM *known_Gost28147_89_cbc_cipher_params;
 static const OSSL_PARAM *known_Gost28147_89_cnt_cipher_params;
 static const OSSL_PARAM *known_Gost28147_89_cnt_12_cipher_params;
@@ -362,7 +366,14 @@ typedef void (*fptr_t)(void);
         { 0, NULL },                                                    \
     }
 
-MAKE_FUNCTIONS(Gost28147_89_cipher);
+#ifdef NEW_GOST89_IMPL
+extern const OSSL_DISPATCH Gost28147_89_cipher_functions[];
+#endif
+
+#ifndef NEW_GOST89_IMPL
+MAKE_FUNCTIONS(Gost28147_89_cipher_legacy);
+#endif
+
 MAKE_FUNCTIONS(Gost28147_89_cnt_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cnt_12_cipher);
 MAKE_FUNCTIONS(Gost28147_89_cbc_cipher);
@@ -381,9 +392,18 @@ MAKE_FUNCTIONS(grasshopper_ctr_acpkm_omac_cipher);
 MAKE_FUNCTIONS(grasshopper_mgm_cipher);
 
 /* The OSSL_ALGORITHM for the provider's operation query function */
+#ifdef NEW_GOST89_IMPL
+extern const OSSL_DISPATCH Gost28147_89_cipher[];
+#endif
+
 const OSSL_ALGORITHM GOST_prov_ciphers[] = {
+#ifdef NEW_GOST89_IMPL
     { SN_id_Gost28147_89 ":gost89:GOST 28147-89:1.2.643.2.2.21", NULL,
       Gost28147_89_cipher_functions },
+#else
+    { SN_id_Gost28147_89 ":gost89:GOST 28147-89:1.2.643.2.2.21", NULL,
+      Gost28147_89_cipher_legacy_functions },
+#endif
     { SN_gost89_cnt, NULL, Gost28147_89_cnt_cipher_functions },
     { SN_gost89_cnt_12, NULL, Gost28147_89_cnt_12_cipher_functions },
     { SN_gost89_cbc, NULL, Gost28147_89_cbc_cipher_functions },
@@ -415,7 +435,9 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 
 void GOST_prov_deinit_ciphers(void) {
     static GOST_cipher *list[] = {
-        &Gost28147_89_cipher,
+#ifndef NEW_GOST89_IMPL
+        &Gost28147_89_cipher_legacy,
+#endif
         &Gost28147_89_cnt_cipher,
         &Gost28147_89_cnt_12_cipher,
         &Gost28147_89_cbc_cipher,
