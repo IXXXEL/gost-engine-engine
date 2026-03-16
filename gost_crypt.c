@@ -155,7 +155,7 @@ static GOST_cipher gost_template_cipher = {
     .ctrl = gost_cipher_ctl,
 };
 
-GOST_cipher Gost28147_89_cipher = {
+GOST_cipher Gost28147_89_cipher_legacy = {
     .nid = NID_id_Gost28147_89,
     .template = &gost_template_cipher,
     .block_size = 1,

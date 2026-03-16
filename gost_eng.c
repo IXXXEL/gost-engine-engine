@@ -86,7 +86,7 @@ GOST_eng_digest *gost_digest_array[] = {
 };
 
 GOST_cipher *gost_cipher_array[] = {
-    &Gost28147_89_cipher,
+    &Gost28147_89_cipher_legacy,
     &Gost28147_89_cnt_cipher,
     &Gost28147_89_cnt_12_cipher,
     &Gost28147_89_cbc_cipher,
